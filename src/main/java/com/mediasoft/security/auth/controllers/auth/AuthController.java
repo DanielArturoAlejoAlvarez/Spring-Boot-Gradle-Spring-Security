@@ -1,4 +1,4 @@
-package com.mediasoft.security.auth.controllers;
+package com.mediasoft.security.auth.controllers.auth;
 
 import com.mediasoft.security.auth.models.AuthenticationRequest;
 import com.mediasoft.security.auth.models.AuthenticationResponse;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class AuthResource {
+public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
