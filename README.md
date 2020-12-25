@@ -46,24 +46,113 @@ Follow the following steps and you're good to go! Important:
 
 ```
 
-### Database
+### Config
 ```java
+@EnableWebSecurity
+class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    private MyUserDetailsService myUserDetailsService;
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
+
+    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(myUserDetailsService);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(myUserDetailsService);
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+                .authorizeRequests()
+                .antMatchers("/authenticate")
+                .permitAll()
+                .anyRequest()
+                .authenticated()
+                .and()
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Override
+    @Bean
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
+    }
+}
 
 ```
 
 ### Controllers
 ```java
+@RestController
+public class AuthController {
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
+    @Autowired
+    private MyUserDetailsService userDetailsService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
+    public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword())
+            );
+        }catch (BadCredentialsException e) {
+            throw new Exception("Username/Password incorrect!", e);
+        }
+
+        final UserDetails userDetails = userDetailsService.loadUserByUsername(
+                authenticationRequest.getUsername()
+        );
+
+        final String jwt = jwtUtil.generateToken(userDetails);
+
+        return ResponseEntity.ok(new AuthenticationResponse(jwt));
+    }
+}
 ```
 
 ### Models
 ```java
+@Data
+@AllArgsConstructor @NoArgsConstructor
+public class AuthenticationRequest {
+    private String username;
+    private String password;
+}
 
+@Getter
+@AllArgsConstructor
+public class AuthenticationResponse {
+    private final String jwt;
+}
 ```
 
 ### Services
 ```java
+@Service
+public class MyUserDetailsService implements UserDetailsService {
 
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return new User("admin","password",new ArrayList<>());
+    }
+}
 ```
 
 ## Contributing
